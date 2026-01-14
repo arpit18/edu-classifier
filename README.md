@@ -6,6 +6,9 @@ A small React (Vite + TypeScript) app that performs zero‑shot text classificat
 - Add/remove your own labels (defaults: "educational", "not educational")
 - Try sample texts and view per‑label confidence bars
 
+## Live demo
+- [arpit18.github.io/edu-classifier](https://arpit18.github.io/edu-classifier/)
+
 Default model reference: https://huggingface.co/Xenova/distilbert-base-uncased-mnli
 
 ## Getting started
