@@ -56,5 +56,3 @@ By default, model files are downloaded from Hugging Face on first use. To ensure
 - You can extend `MODEL_OPTIONS` in `src/App.tsx` to quickly benchmark additional models (e.g., RoBERTa, DeBERTa, XLM‑R variants by `Xenova`).
 - For production, consider a confidence threshold, input validation, loading skeletons, and persisting settings (model/labels/mode) to localStorage.
 
-## License
-MIT
