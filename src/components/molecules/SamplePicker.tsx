@@ -6,9 +6,10 @@ type Props = {
 	onClear: () => void
 	options: Option[]
 	disabled?: boolean
+	onUploadPdfClick?: () => void
 }
 
-export function SamplePicker({ value, onChange, onClear, options, disabled }: Props) {
+export function SamplePicker({ value, onChange, onClear, options, disabled, onUploadPdfClick }: Props) {
 	return (
 		<div style={{ marginBottom: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
 			<label htmlFor="sample" style={{ fontSize: 13, color: '#333' }}>Sample text</label>
@@ -31,6 +32,15 @@ export function SamplePicker({ value, onChange, onClear, options, disabled }: Pr
 			>
 				Clear
 			</button>
+			{onUploadPdfClick && (
+				<button
+					type="button"
+					onClick={onUploadPdfClick}
+					style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', background: '#f6f6f6', cursor: 'pointer' }}
+				>
+					Upload PDF
+				</button>
+			)}
 		</div>
 	)
 }

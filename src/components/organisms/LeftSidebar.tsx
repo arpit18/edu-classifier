@@ -11,6 +11,8 @@ type Props = {
 	modelOptions: ModelOption[]
 	multiLabel: boolean
 	onMultiLabelChange: (v: boolean) => void
+	poolSize: number
+	onPoolSizeChange: (v: number) => void
 	labels: string[]
 	onRemoveLabel: (label: string) => void
 	newLabel: string
@@ -26,6 +28,8 @@ export function LeftSidebar({
 	modelOptions,
 	multiLabel,
 	onMultiLabelChange,
+	poolSize,
+	onPoolSizeChange,
 	labels,
 	onRemoveLabel,
 	newLabel,
@@ -36,10 +40,26 @@ export function LeftSidebar({
 }: Props) {
 	return (
 		<aside className="sidebar left" style={{ width: 300, borderRight: '1px solid #eee', paddingRight: 12 }}>
-			<div className="section-title" style={{ fontWeight: 700, marginBottom: 8 }}>Settings</div>
 			<ModelSelect value={modelId} onChange={onModelChange} options={modelOptions} disabled={classifying} />
 			<Divider />
 			<MultiLabelToggle checked={multiLabel} onChange={onMultiLabelChange} disabled={classifying} />
+			<Divider />
+			<div style={{ marginBottom: 12 }}>
+				<label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+					<span style={{ color: '#333' }}>Concurrency:</span>
+					<select
+						value={poolSize}
+						onChange={(e) => onPoolSizeChange(Number(e.target.value))}
+						disabled={classifying}
+						style={{ padding: 6, borderRadius: 6, border: '1px solid #ddd' }}
+					>
+						<option value={1}>1</option>
+						<option value={2}>2</option>
+						<option value={3}>3</option>
+						<option value={4}>4</option>
+					</select>
+				</label>
+			</div>
 			<Divider />
 			<LabelsEditor
 				labels={labels}

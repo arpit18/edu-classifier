@@ -5,6 +5,8 @@ A small React (Vite + TypeScript) app that performs zero‑shot text classificat
 - Toggle multi‑label scoring
 - Add/remove your own labels (defaults: "educational", "not educational")
 - Try sample texts and view per‑label confidence bars
+- Upload a PDF to extract its text on-device and classify it
+	- Long-text support: optional chunking + score aggregation for reliable results on large PDFs
 
 ## Live demo
 - [arpit18.github.io/edu-classifier](https://arpit18.github.io/edu-classifier/)
@@ -26,11 +28,22 @@ Open the printed localhost URL. The first load may take a bit while model files 
 - The model now loads on the main thread with lightweight UI state to show loading/progress; no Web Worker is used.
 - Labels are editable from the left sidebar; classification uses the current list.
 - Multi‑label mode scores each label independently (scores do not sum to 1).
+- PDF text extraction is done in-browser using `pdfjs-dist`; no file contents leave your device.
+	- A “Clean extracted text” option can normalize whitespace, remove hyphenated line breaks, and drop common page markers before placing the text into the editor.
+	- “Chunk long texts” splits long inputs (with overlap) and averages label scores across chunks.
 
 ### Key files
 - `src/App.tsx`: application state and wiring (model load, classify, layout)
 - `src/types.ts`: shared types
 - `src/components/atoms|molecules|organisms/*`: atomic UI components
+- `src/utils/pdf.ts`: PDF text extraction via `pdfjs-dist`
+
+### Uploading a PDF
+- Click “Upload PDF” above the text area.
+- The PDF’s text is extracted locally in your browser and placed into the textarea.
+- You can edit the extracted text before running classification.
+ - Optionally enable “Clean extracted text” to auto‑tidy content (recommended).
+ - Enable “Chunk long texts” for better accuracy on long documents. The app splits the text into overlapping chunks and averages the scores across chunks.
 
 ## Offline / local model hosting (optional)
 By default, model files are downloaded from Hugging Face on first use. To ensure zero network usage at runtime:
@@ -58,4 +71,5 @@ By default, model files are downloaded from Hugging Face on first use. To ensure
 - Multi‑label mode can be toggled in the sidebar.
 - You can extend `MODEL_OPTIONS` in `src/App.tsx` to quickly benchmark additional models (e.g., RoBERTa, DeBERTa, XLM‑R variants by `Xenova`).
 - For production, consider a confidence threshold, input validation, loading skeletons, and persisting settings (model/labels/mode) to localStorage.
+ - If you need PDF processing in environments with strict CSP, ensure the worker URL from `pdfjs-dist` is allowed to load.
 

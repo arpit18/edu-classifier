@@ -10,7 +10,7 @@ type Props = {
 export function ModelSelect({ value, onChange, options, disabled }: Props) {
 	return (
 		<div style={{ marginBottom: 8 }}>
-			<label htmlFor="model" style={{ display: 'block', marginBottom: 6, fontSize: 13, color: '#333' }}>Model</label>
+			<label htmlFor="model" style={{ display: 'block', marginBottom: 6, color: '#333' }}>Model</label>
 			<select
 				id="model"
 				value={value}

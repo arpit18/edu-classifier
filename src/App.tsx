@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { pipeline } from '@huggingface/transformers'
-import type { ZeroShotResult, ZeroShotClassifier } from './types'
+import type { ZeroShotResult } from './types'
 import { LeftSidebar } from './components/organisms/LeftSidebar'
 import { CenterPanel } from './components/organisms/CenterPanel'
 import { RightSidebar } from './components/organisms/RightSidebar'
+import { chunkText } from './utils/text'
+import { ClassifierWorkerPool } from './service/ClassifierWorker'
+import { useRef } from 'react'
 
-const anyPipeline = pipeline as unknown as (task: string, model: string) => Promise<unknown>
 
 const SAMPLE_TEXTS: { id: string; label: string; text: string }[] = [
 	{
@@ -32,16 +33,6 @@ const MODEL_OPTIONS: { id: string; label: string }[] = [
 	{ id: 'Xenova/nli-deberta-v3-base', label: 'DeBERTa v3 Base' },
 ]
 
-const classifierCache = new Map<string, ZeroShotClassifier>()
-
-async function ensureClassifier(modelId: string): Promise<ZeroShotClassifier> {
-	const cached = classifierCache.get(modelId)
-	if (cached) return cached
-	const instance = await anyPipeline('zero-shot-classification', modelId) as ZeroShotClassifier
-	classifierCache.set(modelId, instance)
-	return instance
-}
-
 function App() {
 	const [ready, setReady] = useState(false)
 	const [input, setInput] = useState('')
@@ -53,6 +44,21 @@ function App() {
 	const [labels, setLabels] = useState<string[]>(['educational', 'not educational'])
 	const [newLabel, setNewLabel] = useState<string>('')
 	const [sampleId, setSampleId] = useState<string>('')
+	const [chunkingEnabled, setChunkingEnabled] = useState<boolean>(true)
+	const [chunkProgress, setChunkProgress] = useState<{ done: number; total: number } | null>(null)
+	const hc = typeof navigator !== 'undefined' && typeof navigator.hardwareConcurrency === 'number' ? navigator.hardwareConcurrency : 0
+	const defaultPool = Math.max(1, Math.min(4, hc > 0 ? hc - 1 : 2))
+	const [poolSize, setPoolSize] = useState<number>(defaultPool)
+	const poolRef = useRef<ClassifierWorkerPool | null>(null)
+	const [perfSummary, setPerfSummary] = useState<{
+		totalMs: number
+		numChunks: number
+		avgChunkMs: number
+		perChunkMs: number[]
+	} | null>(null)
+
+	const CHUNK_SIZE = 2000
+	const CHUNK_OVERLAP = 200
 
 	useEffect(() => {
 		setReady(false)
@@ -60,7 +66,10 @@ function App() {
 		let cancelled = false
 		;(async () => {
 			try {
-				await ensureClassifier(modelId)
+				// (re)create pool on model/pool size change
+				const pool = new ClassifierWorkerPool(poolSize)
+				poolRef.current = pool
+				await pool.init(modelId)
 				if (!cancelled) setReady(true)
 			} catch (err: unknown) {
 				const message = err instanceof Error ? err.message : String(err)
@@ -70,22 +79,56 @@ function App() {
 		return () => {
 			cancelled = true
 		}
-	}, [modelId])
+	}, [modelId, poolSize])
 
 	const onClassify = () => {
 		if (!input.trim()) return
 		setError(null)
 		setResult(null)
 		setClassifying(true)
+		setChunkProgress(null)
+		setPerfSummary(null)
 		;(async () => {
 			try {
-				const clf = await ensureClassifier(modelId)
-				const output = await clf(
-					input,
-					labels,
-					{ multi_label: multiLabel }
-				)
-				setResult(output)
+				const t0 = performance.now()
+				const texts = chunkingEnabled ? (input.length > CHUNK_SIZE ? chunkText(input, CHUNK_SIZE, CHUNK_OVERLAP) : [input]) : [input]
+				if (texts.length === 1) {
+					const { results, durationsMs } = await poolRef.current!.classifyParallel(texts, labels, { multi_label: multiLabel })
+					const output = results[0]
+					setResult(output)
+					const totalMs = performance.now() - t0
+					const avg = durationsMs[0] ?? totalMs
+					setPerfSummary({ totalMs, numChunks: 1, avgChunkMs: avg, perChunkMs: durationsMs })
+					console.log('Classification performance:', { totalMs, numChunks: 1, perChunkMs: durationsMs, avgChunkMs: avg })
+				} else {
+					setChunkProgress({ done: 0, total: texts.length })
+					const sums = Object.fromEntries(labels.map((l) => [l, 0])) as Record<string, number>
+					const onDone = () => setChunkProgress((prev) => prev ? { done: Math.min(prev.done + 1, prev.total), total: prev.total } : null)
+					const { results, durationsMs } = await poolRef.current!.classifyParallel(texts, labels, { multi_label: multiLabel }, onDone)
+					results.forEach((out: ZeroShotResult) => {
+						out.labels.forEach((l: string, i: number) => {
+							const s = out.scores[i] ?? 0
+							if (Number.isFinite(s)) sums[l] = (sums[l] ?? 0) + s
+						})
+					})
+					const avgPairs = labels.map((l) => ({ label: l, score: (sums[l] ?? 0) / texts.length }))
+					avgPairs.sort((a, b) => b.score - a.score)
+					const aggregated: ZeroShotResult = {
+						labels: avgPairs.map((p) => p.label),
+						scores: avgPairs.map((p) => p.score),
+						sequence: input,
+					}
+					setResult(aggregated)
+					const totalMs = performance.now() - t0
+					const avg = durationsMs.length ? (durationsMs.reduce((a, b) => a + b, 0) / durationsMs.length) : totalMs
+					setPerfSummary({ totalMs, numChunks: texts.length, avgChunkMs: avg, perChunkMs: durationsMs })
+					try {
+						console.table(durationsMs.map((ms, i) => ({ chunk: i + 1, ms })))
+					} catch {
+						// ignore
+					}
+					console.log('Classification performance:', { totalMs, numChunks: texts.length, avgChunkMs: avg })
+				}
 			} catch (err: unknown) {
 				const message = err instanceof Error ? err.message : String(err)
 				setError(message)
@@ -131,6 +174,8 @@ function App() {
 					modelOptions={MODEL_OPTIONS}
 					multiLabel={multiLabel}
 					onMultiLabelChange={setMultiLabel}
+					poolSize={poolSize}
+					onPoolSizeChange={setPoolSize}
 					labels={labels}
 					onRemoveLabel={removeLabel}
 					newLabel={newLabel}
@@ -157,6 +202,10 @@ function App() {
 						setInput('')
 					}}
 					sampleOptions={SAMPLE_TEXTS.map(({ id, label }) => ({ id, label }))}
+					chunkingEnabled={chunkingEnabled}
+					onChunkingChange={setChunkingEnabled}
+					chunkProgress={chunkProgress}
+					perfSummary={perfSummary}
 				/>
 				<RightSidebar result={result} top={top} />
 			</div>
