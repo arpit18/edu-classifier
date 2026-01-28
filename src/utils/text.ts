@@ -25,7 +25,6 @@ export function chunkText(text: string, chunkSize: number, overlap: number): str
 	if (length === 0) return []
 	const safeChunkSize = Math.max(1, chunkSize)
 	const safeOverlap = Math.max(0, Math.min(overlap, Math.floor(safeChunkSize / 2)))
-	const step = Math.max(1, safeChunkSize - safeOverlap)
 	const chunks: string[] = []
 	let start = 0
 	while (start < length) {
