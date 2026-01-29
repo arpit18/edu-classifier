@@ -1,0 +1,122 @@
+.pdf-classifier-container {
+  max-width: 640px;
+  margin: 24px auto;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.subtitle {
+  color: #4b5563;
+  margin-top: -6px;
+}
+
+.upload-section {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.upload-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 999px;
+  cursor: pointer;
+  width: fit-content;
+  transition: background 0.2s ease;
+}
+
+.upload-label:hover {
+  background: #1d4ed8;
+}
+
+.upload-section input[type="file"] {
+  display: none;
+}
+
+.file-name {
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.error-message {
+  margin-top: 16px;
+  color: #b91c1c;
+  background: #fee2e2;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.result-card {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.result-card.educational {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.result-card.non-educational {
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
+.result-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.result-icon {
+  font-size: 2.5rem;
+}
+
+.result-title {
+  margin: 0;
+  text-transform: capitalize;
+}
+
+.result-subtitle {
+  margin: 4px 0 0;
+  color: #4b5563;
+}
+
+.score-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.score-grid div {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.score-grid strong {
+  font-size: 1.1rem;
+}
+
+.meta-section {
+  margin-top: 16px;
+  color: #4b5563;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+

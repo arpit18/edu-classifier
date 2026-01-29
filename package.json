@@ -14,7 +14,8 @@
     "@huggingface/transformers": "^3.8.1",
     "pdfjs-dist": "^4.10.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
