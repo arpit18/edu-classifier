@@ -163,7 +163,7 @@ function App() {
 	}
 
 	return (
-		<div className="app-shell" style={{ maxWidth: 1200, margin: '40px auto', fontFamily: 'system-ui, sans-serif' }}>
+		<div className="app-shell" style={{ width: '100%', maxWidth: 1200, margin: '40px auto', padding: '0 16px', boxSizing: 'border-box', fontFamily: 'system-ui, sans-serif' }}>
 			<div className="app-topbar" style={{ padding: '12px 16px', borderBottom: '1px solid #eee', marginBottom: 12, position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
 				<h1 style={{ margin: 0, fontSize: 20 }}>Zero‑Shot Text Classifier</h1>
 			</div>

@@ -8,7 +8,7 @@ type Props = {
 
 export function RightSidebar({ result, top }: Props) {
 	return (
-		<aside className="sidebar right" style={{ width: 360, borderLeft: '1px solid #eee', paddingLeft: 12 }}>
+		<aside className="sidebar right" style={{ flex: '1 1 0', minWidth: 0, borderLeft: '1px solid #eee', paddingLeft: 12 }}>
 			<ResultsList result={result} top={top} />
 		</aside>
 	)

@@ -9,7 +9,7 @@ export function Shell() {
   return (
     <div>
       <nav style={{ padding: '0 16px', borderBottom: '1px solid #e5e7eb', marginBottom: 12, position: 'sticky', top: 0, background: '#fff', zIndex: 2 }}>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <NavLink
             to="/text"
             end

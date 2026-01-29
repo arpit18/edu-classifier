@@ -11,14 +11,14 @@ type Props = {
 
 export function SamplePicker({ value, onChange, onClear, options, disabled, onUploadPdfClick }: Props) {
 	return (
-		<div style={{ marginBottom: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+		<div style={{ marginBottom: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 			<label htmlFor="sample" style={{ fontSize: 13, color: '#333' }}>Sample text</label>
 			<select
 				id="sample"
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				disabled={disabled}
-				style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }}
+				style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd', maxWidth: '100%' }}
 			>
 				<option value="">Choose a sample…</option>
 				{options.map(s => (

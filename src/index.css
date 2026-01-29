@@ -13,6 +13,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 a {
   font-weight: 500;
   color: #646cff;
@@ -28,8 +32,8 @@ body {
   min-height: 100vh;
 }
 
-html {
-  overflow-y: scroll;
+html, body {
+  overflow-x: hidden;
 }
 
 h1 {
@@ -67,4 +71,19 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* Stack 3-column layout into 3 rows on small screens */
+@media (max-width: 768px) {
+  .layout-3col {
+    flex-direction: column;
+  }
+  .layout-3col > * {
+    width: 100%;
+  }
+}
+
+.layout-3col > * {
+  flex: 1 1 0;
+  min-width: 0;
 }

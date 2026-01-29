@@ -68,7 +68,7 @@ export function CenterPanel({
 	}
 
 	return (
-		<main style={{ flex: 1 }}>
+		<main style={{ flex: '1 1 0', width: '100%', minWidth: 0 }}>
 			<div style={{ marginBottom: 10, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
 				{ready ? (
 					<Badge variant="success">● Model ready</Badge>
@@ -104,13 +104,13 @@ export function CenterPanel({
 				onChange={onFileChange}
 				style={{ display: 'none' }}
 			/>
-			<div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 12px' }}>
+			<div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0 12px', flexWrap: 'wrap' }}>
 				{extracting && (
 					<span style={{ fontSize: 12, color: '#666' }}>
 						Extracting PDF…
 					</span>
 				)}
-				<label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 'auto', fontSize: 12, color: '#333' }}>
+				<label style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginLeft: 'auto', fontSize: 12, color: '#333', flexWrap: 'wrap', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
 					<input
 						type="checkbox"
 						checked={chunkingEnabled}
@@ -126,7 +126,7 @@ export function CenterPanel({
 				onChange={(e) => setInput(e.target.value)}
 				rows={12}
 				disabled={classifying}
-				style={{ width: '100%', padding: 12, fontSize: 14, borderRadius: 12, border: '1px solid #ddd', boxShadow: '0 1px 0 rgba(0,0,0,0.03)' }}
+				style={{ width: '100%', padding: 12, fontSize: 14, borderRadius: 12, border: '1px solid #ddd', boxShadow: '0 1px 0 rgba(0,0,0,0.03)', boxSizing: 'border-box' }}
 			/>
 			<div style={{ marginTop: 12 }}>
 				<PrimaryButton disabled={!ready || classifying || !input.trim()} onClick={onClassify}>

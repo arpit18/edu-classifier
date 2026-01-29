@@ -39,7 +39,7 @@ export function LeftSidebar({
 	classifying,
 }: Props) {
 	return (
-		<aside className="sidebar left" style={{ width: 300, borderRight: '1px solid #eee', paddingRight: 12 }}>
+		<aside className="sidebar left" style={{ flex: '1 1 0', minWidth: 0, borderRight: '1px solid #eee', paddingRight: 12 }}>
 			<ModelSelect value={modelId} onChange={onModelChange} options={modelOptions} disabled={classifying} />
 			<Divider />
 			<MultiLabelToggle checked={multiLabel} onChange={onMultiLabelChange} disabled={classifying} />
