@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { classifyEducationalDocument, getDefaultClassifierOptions, type PdfMetadata } from './educationalClassifier'
+import { writeExcelFromRows } from '../utils/xlsx.ts'
 import './pdfClassifier.css'
 
 const DEFAULT_OPTIONS = getDefaultClassifierOptions()
@@ -49,6 +50,20 @@ async function extractPdfText(
   }
 }
 
+async function extractTextFromPdfUrl(
+  url: string,
+  pagesToAnalyze: number,
+): Promise<{ text: string; metadata: PdfMetadata; totalPages: number }> {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch PDF: ${url} (${response.status})`)
+  }
+  const blob = await response.blob()
+  const name = url.split('/').pop() || 'document.pdf'
+  const file = new File([blob], name, { type: 'application/pdf' })
+  return extractPdfText(file, pagesToAnalyze)
+}
+
 function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`
 }
@@ -58,6 +73,8 @@ export default function PDFEducationalClassifier() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [fileName, setFileName] = useState('')
+  const [batchLoading, setBatchLoading] = useState(false)
+  const [batchStatus, setBatchStatus] = useState('')
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -94,17 +111,96 @@ export default function PDFEducationalClassifier() {
     }
   }, [])
 
+  const runBatchOnAssets = useCallback(async () => {
+    setBatchLoading(true)
+    setError('')
+    try {
+      const base = (import.meta as unknown as { env: { BASE_URL?: string } }).env.BASE_URL || '/'
+      const resp = await fetch(`${base}assets/manifest.json`, { cache: 'no-cache' })
+      if (!resp.ok) throw new Error(`Failed to load ${base}assets/manifest.json`)
+      const manifestPaths = (await resp.json()) as string[]
+      const header = [
+        'PDF Name',
+        'Actual Type',
+        'Identified Type',
+        'Confidence Score',
+        'Edu Signals',
+        'Non Edu Signals',
+        'Comments',
+      ]
+      const rows: Array<Array<string | number>> = [header]
+
+      const total = manifestPaths.length
+      for (let i = 0; i < manifestPaths.length; i += 1) {
+        const relPath = manifestPaths[i]
+        const encoded = relPath.split('/').map((s) => encodeURIComponent(s)).join('/')
+        const url = `${base}assets/${encoded}`
+        const lowerPath = `/assets/${relPath.toLowerCase()}`
+        const actualType = lowerPath.includes('/assets/edu/') ? 'educational' : lowerPath.includes('/assets/non edu/') ? 'non-educational' : ''
+        const fname = relPath.split('/').pop() ?? 'unknown.pdf'
+
+        setBatchStatus(`Processing (${i + 1}/${total}): ${fname}`)
+        console.log(`Processing (${i + 1}/${total}): ${relPath}`)
+
+        const { text, metadata } = await extractTextFromPdfUrl(url, DEFAULT_OPTIONS.pagesToAnalyze)
+        const classification = classifyEducationalDocument(text, metadata, {
+          maxTextLength: DEFAULT_OPTIONS.maxTextLength,
+          confidenceThreshold: DEFAULT_OPTIONS.confidenceThreshold,
+        })
+
+        rows.push([
+          fname,
+          actualType,
+          classification.classification,
+          Number((classification.confidence * 100).toFixed(1)),
+          classification.details.foundKeywords.join(', '),
+          classification.details.foundNonEduKeywords.join(', '),
+          '',
+        ])
+
+        setBatchStatus(`Processed (${i + 1}/${total}): ${fname}`)
+        console.log(
+          `Processed (${i + 1}/${total}): ${relPath} -> ${classification.classification} (${(
+            classification.confidence * 100
+          ).toFixed(1)}%)`,
+        )
+      }
+
+      await writeExcelFromRows(rows, 'Results', 'classification_results.xlsx', [
+        { wch: 32 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 40 },
+        { wch: 40 },
+        { wch: 24 },
+      ])
+    } catch (e) {
+      console.error('Asset batch error', e)
+      setError('Asset batch run failed. Please try again.')
+    } finally {
+      setBatchLoading(false)
+      setBatchStatus('')
+    }
+  }, [])
+
   return (
     <div className="pdf-classifier-container">
       <h2>Educational PDF Classifier</h2>
       <p className="subtitle">Quick local classification using rule-based signals + document structure.</p>
 
       <div className="upload-section">
-        <label htmlFor="pdf-upload" className="upload-label">
-          {loading ? 'Analyzing...' : 'Choose PDF'}
-        </label>
-        <input id="pdf-upload" type="file" accept=".pdf" onChange={handleFileUpload} disabled={loading} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={runBatchOnAssets} disabled={loading || batchLoading} className="upload-label">
+            {batchLoading ? 'Running on assets…' : 'Batch run on existing PDFs'}
+          </button>
+          <label htmlFor="pdf-upload" className="upload-label">
+            {loading ? 'Analyzing...' : 'Choose PDF'}
+          </label>
+          <input id="pdf-upload" type="file" accept=".pdf" onChange={handleFileUpload} disabled={loading} />
+        </div>
         {fileName && <div className="file-name">{fileName}</div>}
+        {batchStatus && <div className="file-name">{batchStatus}</div>}
       </div>
 
       {error && <div className="error-message">{error}</div>}

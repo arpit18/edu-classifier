@@ -205,8 +205,12 @@ function clamp(value: number, min: number, max: number): number {
 function countKeywordMatches(text: string, keywords: string[]): number {
   const lowered = text.toLowerCase()
   return keywords.reduce((count, keyword) => {
-    const pattern = new RegExp(`\\b${keyword}\\b`, 'gi')
+    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'giu')
     const matches = lowered.match(pattern)
+    if (matches && matches.length > 0) {
+      console.debug('countKeywordMatches', { keyword, regex: pattern.toString(), occurrences: matches.length })
+    }
     return count + (matches ? matches.length : 0)
   }, 0)
 }
@@ -328,10 +332,10 @@ export function classifyEducationalDocument(
   const confidence = clamp(Math.abs(totalScore - 0.5) * 2, 0, 1)
 
   const foundKeywords = EDUCATIONAL_KEYWORDS.filter((keyword) =>
-    normalized.toLowerCase().includes(keyword),
+    countKeywordMatches(normalized, [keyword]) > 0,
   ).slice(0, 10)
   const foundNonEduKeywords = NON_EDUCATIONAL_KEYWORDS.filter((keyword) =>
-    normalized.toLowerCase().includes(keyword),
+    countKeywordMatches(normalized, [keyword]) > 0,
   ).slice(0, 10)
 
   return {
