@@ -290,10 +290,10 @@ export default function PDFEducationalClassifier() {
       <div className="upload-section">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={runBatchOnAssets} disabled={loading || batchLoading} className="upload-label">
-            {batchLoading ? 'Running on assets…' : 'Batch run on existing PDFs'}
+            {batchLoading ? 'Running …' : 'Use static PDF assets'}
           </button>
           <button onClick={handleBatchClick} disabled={loading || batchLoading} className="upload-label">
-            {batchLoading ? 'Running from system…' : 'Run files from System'}
+            {batchLoading ? 'Running …' : 'Choose folder'}
           </button>
           <label htmlFor="pdf-upload" className="upload-label">
             {loading ? 'Analyzing...' : 'Choose PDF'}
