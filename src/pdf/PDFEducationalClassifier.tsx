@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { classifyEducationalDocument, getDefaultClassifierOptions, type PdfMetadata } from './educationalClassifier'
@@ -75,6 +75,16 @@ export default function PDFEducationalClassifier() {
   const [fileName, setFileName] = useState('')
   const [batchLoading, setBatchLoading] = useState(false)
   const [batchStatus, setBatchStatus] = useState('')
+  const dirInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (dirInputRef.current) {
+      dirInputRef.current.setAttribute('webkitdirectory', 'true')
+      dirInputRef.current.setAttribute('directory', 'true')
+      dirInputRef.current.multiple = true
+      dirInputRef.current.accept = '.pdf'
+    }
+  }, [])
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -166,7 +176,8 @@ export default function PDFEducationalClassifier() {
         )
       }
 
-      await writeExcelFromRows(rows, 'Results', 'classification_results.xlsx', [
+      const sortedRows = [header, ...rows.slice(1).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: 'base' }))] as Array<Array<string | number>>
+      await writeExcelFromRows(sortedRows, 'Results', 'classification_results.xlsx', [
         { wch: 32 },
         { wch: 16 },
         { wch: 18 },
@@ -184,6 +195,93 @@ export default function PDFEducationalClassifier() {
     }
   }, [])
 
+  const runBatchOnFiles = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    setBatchLoading(true)
+    setError('')
+    try {
+      const header = [
+        'PDF Name',
+        'Actual Type',
+        'Identified Type',
+        'Confidence Score',
+        'Edu Signals',
+        'Non Edu Signals',
+        'Comments',
+      ]
+      const rows: Array<Array<string | number>> = [header]
+      const list = Array.from(files).filter((f) => f.name.toLowerCase().endsWith('.pdf'))
+      const total = list.length
+
+      for (let i = 0; i < list.length; i += 1) {
+        const file = list[i]
+        const relPath: string =
+          ((file as unknown as { webkitRelativePath?: string }).webkitRelativePath as string | undefined) || file.name
+        const fname = file.name
+        const lowerRel = relPath.toLowerCase()
+        const actualType =
+          lowerRel.includes('/edu/') || lowerRel.startsWith('edu/')
+            ? 'educational'
+            : lowerRel.includes('/non edu/') || lowerRel.startsWith('non edu/')
+            ? 'non-educational'
+            : ''
+
+        setBatchStatus(`Processing (${i + 1}/${total}): ${fname}`)
+        console.log(`Processing (${i + 1}/${total}): ${relPath}`)
+
+        const { text, metadata } = await extractPdfText(file, DEFAULT_OPTIONS.pagesToAnalyze)
+        const classification = classifyEducationalDocument(text, metadata, {
+          maxTextLength: DEFAULT_OPTIONS.maxTextLength,
+          confidenceThreshold: DEFAULT_OPTIONS.confidenceThreshold,
+        })
+
+        rows.push([
+          fname,
+          actualType,
+          classification.classification,
+          Number((classification.confidence * 100).toFixed(1)),
+          classification.details.foundKeywords.join(', '),
+          classification.details.foundNonEduKeywords.join(', '),
+          '',
+        ])
+
+        setBatchStatus(`Processed (${i + 1}/${total}): ${fname}`)
+        console.log(
+          `Processed (${i + 1}/${total}): ${relPath} -> ${classification.classification} (${(
+            classification.confidence * 100
+          ).toFixed(1)}%)`,
+        )
+      }
+
+      const sortedRows = [header, ...rows.slice(1).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: 'base' }))] as Array<Array<string | number>>
+      await writeExcelFromRows(sortedRows, 'Results', 'classification_results.xlsx', [
+        { wch: 32 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 40 },
+        { wch: 40 },
+        { wch: 24 },
+      ])
+    } catch (e) {
+      console.error('System batch error', e)
+      setError('Batch run failed. Please try again.')
+    } finally {
+      setBatchLoading(false)
+      setBatchStatus('')
+      if (dirInputRef.current) dirInputRef.current.value = ''
+    }
+  }, [])
+
+  const handleBatchClick = useCallback(() => {
+    dirInputRef.current?.click()
+  }, [])
+
+  const handleDirChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    await runBatchOnFiles(files)
+  }, [runBatchOnFiles])
+
   return (
     <div className="pdf-classifier-container">
       <h2>Educational PDF Classifier</h2>
@@ -194,10 +292,20 @@ export default function PDFEducationalClassifier() {
           <button onClick={runBatchOnAssets} disabled={loading || batchLoading} className="upload-label">
             {batchLoading ? 'Running on assets…' : 'Batch run on existing PDFs'}
           </button>
+          <button onClick={handleBatchClick} disabled={loading || batchLoading} className="upload-label">
+            {batchLoading ? 'Running from system…' : 'Run files from System'}
+          </button>
           <label htmlFor="pdf-upload" className="upload-label">
             {loading ? 'Analyzing...' : 'Choose PDF'}
           </label>
           <input id="pdf-upload" type="file" accept=".pdf" onChange={handleFileUpload} disabled={loading} />
+          <input
+            ref={dirInputRef}
+            id="pdf-dir"
+            type="file"
+            style={{ display: 'none' }}
+            onChange={handleDirChange}
+          />
         </div>
         {fileName && <div className="file-name">{fileName}</div>}
         {batchStatus && <div className="file-name">{batchStatus}</div>}
