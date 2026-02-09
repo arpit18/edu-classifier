@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { classifyEducationalDocument, getDefaultClassifierOptions, type PdfMetadata } from './educationalClassifier'
+import { extractTextFromPdfUrl } from '../utils/pdf.ts'
+import { writeExcelFromRows } from '../utils/xlsx.ts'
 import './pdfClassifier.css'
 
 const DEFAULT_OPTIONS = getDefaultClassifierOptions()
@@ -58,6 +60,7 @@ export default function PDFEducationalClassifier() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [fileName, setFileName] = useState('')
+  const [batchLoading, setBatchLoading] = useState(false)
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -94,6 +97,61 @@ export default function PDFEducationalClassifier() {
     }
   }, [])
 
+  const runBatchOnAssets = useCallback(async () => {
+    setBatchLoading(true)
+    setError('')
+    try {
+      const modules = import.meta.glob('../../assets/**/*.pdf', { as: 'url', eager: true }) as Record<string, string>
+      const entries = Object.entries(modules)
+      const header = [
+        'PDF Name',
+        'Actual Type',
+        'Identified Type',
+        'Confidence Score',
+        'Edu Signals',
+        'Non Edu Signals',
+        'Comments',
+      ]
+      const rows: Array<Array<string | number>> = [header]
+
+      for (const [path, url] of entries) {
+        const lowerPath = path.toLowerCase()
+        const actualType = lowerPath.includes('/assets/edu/') ? 'educational' : lowerPath.includes('/assets/non edu/') ? 'non-educational' : ''
+        const fileName = path.split('/').pop() ?? url.split('/').pop() ?? 'unknown.pdf'
+
+        const { text, metadata } = await extractTextFromPdfUrl(url, DEFAULT_OPTIONS.pagesToAnalyze)
+        const classification = classifyEducationalDocument(text, metadata, {
+          maxTextLength: DEFAULT_OPTIONS.maxTextLength,
+          confidenceThreshold: DEFAULT_OPTIONS.confidenceThreshold,
+        })
+
+        rows.push([
+          fileName,
+          actualType,
+          classification.classification,
+          Number((classification.confidence * 100).toFixed(1)),
+          classification.details.foundKeywords.join(', '),
+          classification.details.foundNonEduKeywords.join(', '),
+          '',
+        ])
+      }
+
+      await writeExcelFromRows(rows, 'Results', 'classification_results.xlsx', [
+        { wch: 32 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 40 },
+        { wch: 40 },
+        { wch: 24 },
+      ])
+    } catch {
+      setError('Asset batch run failed. Please try again.')
+    } finally {
+      setBatchLoading(false)
+    }
+  }, [])
+
   return (
     <div className="pdf-classifier-container">
       <h2>Educational PDF Classifier</h2>
@@ -105,6 +163,9 @@ export default function PDFEducationalClassifier() {
         </label>
         <input id="pdf-upload" type="file" accept=".pdf" onChange={handleFileUpload} disabled={loading} />
         {fileName && <div className="file-name">{fileName}</div>}
+        <button onClick={runBatchOnAssets} disabled={loading || batchLoading} className="upload-label" style={{ marginLeft: 12 }}>
+          {batchLoading ? 'Running assets…' : 'Run on Assets'}
+        </button>
       </div>
 
       {error && <div className="error-message">{error}</div>}
