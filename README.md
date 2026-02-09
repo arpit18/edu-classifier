@@ -52,9 +52,41 @@ Key files
 - Rule‑based signals compute an "educational vs non‑educational" classification with confidence and sub‑scores.
 - Shows found keywords and other signals for transparency.
 
+Batch automation
+- Two ways to run a batch and export an Excel:
+  - Run files from System: pick a local folder (recurses into subfolders, PDFs only).
+  - Batch run on existing PDFs: reads from `public/assets/**` using a manifest.
+- Excel columns (in order):
+  1. PDF Name
+  2. Actual Type
+  3. Identified Type
+  4. Confidence Score
+  5. Edu Signals
+  6. Non Edu Signals
+  7. Comments
+- Rows are sorted by PDF Name (case‑insensitive) before export.
+
+Public assets layout (for “existing PDFs” batch)
+- Place PDFs under:
+  - `public/assets/Edu`
+  - `public/assets/Non Edu`
+- Maintain a manifest at `public/assets/manifest.json` listing relative PDF paths, e.g.:
+
+```json
+[
+  "Edu/Chemistry.pdf",
+  "Non Edu/Invoice-123.pdf"
+]
+```
+
+Notes
+- Asset and manifest URLs respect Vite’s `import.meta.env.BASE_URL` so the app works on GitHub Pages or other subpaths.
+- Keyword matching uses escaped, Unicode‑aware whole‑word boundaries to avoid false positives (e.g., “nda” not matching inside “calendar”).
+
 Key files
 - `src/pdf/PDFEducationalClassifier.tsx` — UI page
 - `src/pdf/educationalClassifier.ts` — scoring logic (keywords, patterns, structure, metadata)
+- `src/utils/xlsx.ts` — minimal Excel writer used by batch export
 - `src/pdf/pdfClassifier.css` — styles for the PDF classifier card
 
 ## ESLint
